@@ -1,87 +1,19 @@
-import {
-  Box,
-  VStack,
-  HStack,
-  Text,
-  Heading,
-  Icon,
-  Badge,
-} from "@chakra-ui/react";
-import { FiArrowUpRight, FiArrowDownLeft } from "react-icons/fi";
+import { Badge, Box, Button, HStack, Table, Tbody, Td, Text, Th, Thead, Tr, VStack, Heading, useColorModeValue } from '@chakra-ui/react';
+import { Link } from 'react-router-dom';
+import { currency, useFinanceData } from '../../data/financeStore';
 
-interface Transaction {
-  id: number;
-  type: "income" | "expense";
-  description: string;
-  amount: number;
-  date: string;
-  category: string;
-}
-
-const RecentTransactions: React.FC = () => {
-  // Example transactions - replace with actual data from your state management
-  const transactions: Transaction[] = [
-    {
-      id: 1,
-      type: "expense",
-      description: "Grocery Shopping",
-      amount: 120.50,
-      date: "2024-01-15",
-      category: "Food"
-    },
-    {
-      id: 2,
-      type: "income",
-      description: "Salary Deposit",
-      amount: 3000.00,
-      date: "2024-01-14",
-      category: "Salary"
-    },
-    {
-      id: 3,
-      type: "expense",
-      description: "Netflix Subscription",
-      amount: 15.99,
-      date: "2024-01-13",
-      category: "Entertainment"
-    },
-  ];
-
-  return (
-    <Box p={5} borderRadius="lg" bg="white" boxShadow="sm">
-      <VStack align="stretch" spacing={4}>
-        <Heading size="md">Recent Transactions</Heading>
-
-        {transactions.map((transaction) => (
-          <HStack key={transaction.id} justify="space-between" p={3} 
-                 borderRadius="md" bg="gray.50" _hover={{ bg: "gray.100" }}>
-            <HStack spacing={4}>
-              <Icon
-                as={transaction.type === "income" ? FiArrowDownLeft : FiArrowUpRight}
-                color={transaction.type === "income" ? "green.500" : "red.500"}
-                boxSize={5}
-              />
-              <Box>
-                <Text fontWeight="medium">{transaction.description}</Text>
-                <Text fontSize="sm" color="gray.500">
-                  {new Date(transaction.date).toLocaleDateString()}
-                </Text>
-              </Box>
-            </HStack>
-
-            <HStack spacing={3}>
-              <Badge colorScheme={transaction.type === "income" ? "green" : "red"}>
-                {transaction.category}
-              </Badge>
-              <Text fontWeight="bold" color={transaction.type === "income" ? "green.500" : "red.500"}>
-                {transaction.type === "income" ? "+" : "-"}${transaction.amount.toLocaleString()}
-              </Text>
-            </HStack>
-          </HStack>
-        ))}
-      </VStack>
+const RecentTransactions = () => {
+  const { transactions } = useFinanceData();
+  const header = useColorModeValue('#f4f7fb', '#17253a');
+  return <VStack align="stretch" spacing={4}>
+    <HStack justify="space-between"><Box><Heading size="md">Recent transactions</Heading><Text color="app.muted" fontSize="sm" mt="1">Latest activity across your accounts</Text></Box><Button as={Link} to="/transactions" size="xs" variant="ghost" colorScheme="brand">View all</Button></HStack>
+    <Box overflowX="auto" border="1px solid" borderColor="app.border" borderRadius="xl">
+      <Table minW="580px" size="sm" variant="simple">
+        <Thead bg={header}><Tr><Th py="3">Transaction</Th><Th>Date</Th><Th>Status</Th><Th isNumeric>Amount</Th></Tr></Thead>
+        <Tbody>{transactions.slice(0, 5).map((item) => <Tr key={item.id} _hover={{ bg: 'app.surfaceRaised' }}><Td py="3"><HStack spacing="3"><Box w="2" h="8" borderRadius="full" bg={item.type === 'income' ? 'income.400' : 'expense.400'}/><Box><Text fontWeight="600" fontSize="sm">{item.description}</Text><Text fontSize="xs" color="app.muted">{item.category}</Text></Box></HStack></Td><Td color="app.muted">{new Date(`${item.date}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</Td><Td><Badge borderRadius="full" colorScheme={item.status === 'completed' ? 'green' : item.status === 'pending' ? 'yellow' : 'red'}>{item.status}</Badge></Td><Td isNumeric fontWeight="700" color={item.type === 'income' ? 'income.400' : 'expense.400'}>{item.type === 'income' ? '+' : '−'}{currency(item.amount)}</Td></Tr>)}
+        {!transactions.length && <Tr><Td colSpan={4} textAlign="center" py="8" color="app.muted">No transactions yet.</Td></Tr>}</Tbody>
+      </Table>
     </Box>
-  );
+  </VStack>;
 };
-
 export default RecentTransactions;

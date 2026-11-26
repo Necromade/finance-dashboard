@@ -1,115 +1,32 @@
-import { Box, Heading, Select, HStack, Badge, useColorModeValue } from '@chakra-ui/react';
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-} from 'recharts';
-import { useState } from 'react';
+import { Box, Heading, HStack, Badge, useColorModeValue, Text } from '@chakra-ui/react';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { useMemo } from 'react';
+import { currency, getMonthKey, useFinanceData } from '../../data/financeStore';
 
-interface ChartData {
-  name: string;
-  expenses: number;
-  income: number;
-}
-
-const generateData = (months: number): ChartData[] => {
-  const currentDate = new Date();
-  const data: ChartData[] = [];
-  
-  for (let i = months - 1; i >= 0; i--) {
-    const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
-    data.push({
-      name: date.toLocaleString('default', { month: 'short' }),
-      expenses: Math.floor(Math.random() * 3000) + 2000,
-      income: Math.floor(Math.random() * 4000) + 4000,
+const ExpenseChart = ({ timeRange, monthOffset = 0 }: { timeRange: string; monthOffset?: number }) => {
+  const { transactions } = useFinanceData();
+  const tooltipBg = useColorModeValue('#ffffff', '#162338');
+  const tooltipColor = useColorModeValue('#182436', '#e6edf7');
+  const grid = useColorModeValue('#e2e8f0', '#25344a');
+  const data = useMemo(() => {
+    const months = Number(timeRange);
+    const current = new Date();
+    return Array.from({ length: months }, (_, index) => {
+      const date = new Date(current.getFullYear(), current.getMonth() - (months - index - 1) - monthOffset, 1);
+      const key = getMonthKey(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-01`);
+      const rows = transactions.filter((t) => t.date.startsWith(key) && t.status === 'completed');
+      return { name: date.toLocaleString('pt-BR', { month: 'short' }), income: rows.filter((t) => t.type === 'income').reduce((n, t) => n + t.amount, 0), expenses: rows.filter((t) => t.type === 'expense').reduce((n, t) => n + t.amount, 0) };
     });
-  }
-  
-  return data;
-};
-
-const ExpenseChart = () => {
-  const [timeRange, setTimeRange] = useState('6');
-  const data = generateData(parseInt(timeRange));
-  
+  }, [transactions, timeRange, monthOffset]);
   const totalIncome = data.reduce((sum, item) => sum + item.income, 0);
   const totalExpenses = data.reduce((sum, item) => sum + item.expenses, 0);
-  const savings = totalIncome - totalExpenses;
-  const savingsRate = Math.round((savings / totalIncome) * 100);
-
-  return (
-    <Box p={6} bg="white" borderRadius="lg" boxShadow="sm" height="400px">
-      <HStack justify="space-between" mb={4} align="center">
-        <Box>
-          <Heading size="md">Income vs Expenses</Heading>
-          <HStack spacing={4} mt={2}>
-            <Badge colorScheme="green" fontSize="sm" px={2} py={1}>
-              Income: ${totalIncome.toLocaleString()}
-            </Badge>
-            <Badge colorScheme="red" fontSize="sm" px={2} py={1}>
-              Expenses: ${totalExpenses.toLocaleString()}
-            </Badge>
-            <Badge colorScheme="blue" fontSize="sm" px={2} py={1}>
-              Savings Rate: {savingsRate}%
-            </Badge>
-          </HStack>
-        </Box>
-        <Select
-          value={timeRange}
-          onChange={(e) => setTimeRange(e.target.value)}
-          width="150px"
-        >
-          <option value="12">Last 12 months</option>
-          <option value="6">Last 6 months</option>
-          <option value="3">Last 3 months</option>
-        </Select>
-      </HStack>
-      
-      <ResponsiveContainer width="100%" height="75%">
-        <AreaChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-          <defs>
-            <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#48BB78" stopOpacity={0.1}/>
-              <stop offset="95%" stopColor="#48BB78" stopOpacity={0}/>
-            </linearGradient>
-            <linearGradient id="colorExpenses" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#F56565" stopOpacity={0.1}/>
-              <stop offset="95%" stopColor="#F56565" stopOpacity={0}/>
-            </linearGradient>
-          </defs>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="name" />
-          <YAxis />
-          <Tooltip
-            contentStyle={{ backgroundColor: 'white', borderRadius: '8px' }}
-            formatter={(value: number) => [`$${value.toLocaleString()}`, '']}
-          />
-          <Legend />
-          <Area
-            type="monotone"
-            dataKey="income"
-            stroke="#48BB78"
-            fill="url(#colorIncome)"
-            strokeWidth={2}
-            name="Income"
-          />
-          <Area
-            type="monotone"
-            dataKey="expenses"
-            stroke="#F56565"
-            fill="url(#colorExpenses)"
-            strokeWidth={2}
-            name="Expenses"
-          />
-        </AreaChart>
-      </ResponsiveContainer>
-    </Box>
-  );
+  const savingsRate = totalIncome > 0 ? Math.round(((totalIncome - totalExpenses) / totalIncome) * 100) : 0;
+  return <Box p={{ base: 2, md: 3 }} height={{ base: '360px', md: '390px' }} minW={0}>
+    <HStack justify="space-between" mb={4} align="start" wrap="wrap"><Box><Heading size="md">Income vs expenses</Heading><HStack spacing={2} mt={3} wrap="wrap"><Badge colorScheme="green" borderRadius="full" px="2">Income {currency(totalIncome)}</Badge><Badge colorScheme="red" borderRadius="full" px="2">Expenses {currency(totalExpenses)}</Badge><Badge colorScheme="cyan" borderRadius="full" px="2">Savings {savingsRate}%</Badge></HStack></Box>
+      <Text color="app.muted" fontSize="xs" pt="1">{monthOffset ? 'Previous month' : timeRange === '1' ? 'Current month' : `Last ${timeRange} months`}</Text>
+    </HStack>
+    <Text position="absolute" left="-10000px">Gráfico mensal: {data.map((m) => `${m.name}: entradas ${currency(m.income)}, saídas ${currency(m.expenses)}`).join('; ')}</Text>
+    <ResponsiveContainer width="100%" height="78%"><AreaChart data={data} margin={{ top: 12, right: 8, left: -18, bottom: 0 }}><defs><linearGradient id="incomeFill" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#10b981" stopOpacity={0.24}/><stop offset="95%" stopColor="#10b981" stopOpacity={0}/></linearGradient><linearGradient id="expenseFill" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#f43f5e" stopOpacity={0.2}/><stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/></linearGradient></defs><CartesianGrid strokeDasharray="3 6" stroke={grid}/><XAxis dataKey="name" tickLine={false} axisLine={false}/><YAxis tickLine={false} axisLine={false}/><Tooltip contentStyle={{ backgroundColor: tooltipBg, color: tooltipColor, borderRadius: 12, border: `1px solid ${grid}` }} formatter={(value: number) => [currency(value), '']} /><Legend /><Area type="monotone" dataKey="income" stroke="#10b981" strokeWidth={2.5} fill="url(#incomeFill)" name="Entradas" /><Area type="monotone" dataKey="expenses" stroke="#f43f5e" strokeWidth={2.5} fill="url(#expenseFill)" name="Saídas" /></AreaChart></ResponsiveContainer>
+  </Box>;
 };
-
 export default ExpenseChart;

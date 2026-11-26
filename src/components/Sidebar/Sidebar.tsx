@@ -1,178 +1,38 @@
-import {
-  Box,
-  Flex,
-  Icon,
-  Text,
-  VStack,
-  HStack,
-  Avatar,
-  Menu,
-  MenuButton,
-  MenuList,
-  MenuItem,
-  useColorModeValue,
-  Drawer,
-  DrawerContent,
-  DrawerOverlay,
-  DrawerCloseButton,
-  DrawerHeader,
-  DrawerBody,
-} from '@chakra-ui/react';
+import { Box, Flex, Icon, Text, VStack, HStack, Drawer, DrawerContent, DrawerOverlay, DrawerCloseButton, DrawerHeader, DrawerBody, Tooltip } from '@chakra-ui/react';
 import { Link, useLocation } from 'react-router-dom';
-import {
-  FiHome,
-  FiTrendingUp,
-  FiDollarSign,
-} from 'react-icons/fi';
-import ThemeToggle from '../../theme/ThemeToggle';
+import { FiHome, FiDollarSign, FiPieChart, FiActivity } from 'react-icons/fi';
 
-interface SidebarProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
+interface SidebarProps { isOpen: boolean; onClose: () => void }
+const navItems = [
+  { icon: FiHome, label: 'Dashboard', to: '/' },
+  { icon: FiPieChart, label: 'Analytics', to: '/analytics' },
+  { icon: FiActivity, label: 'Transactions', to: '/transactions' },
+];
 
-interface NavItemProps {
-  icon: React.ElementType;
-  children: string;
-  to: string;
-  onClick?: () => void;
-}
-
-const NavItem = ({ icon, children, to, onClick }: NavItemProps) => {
+function SidebarPanel({ onClose, compact = false }: { onClose: () => void; compact?: boolean }) {
   const location = useLocation();
-  const isActive = location.pathname === to;
-  const activeBg = useColorModeValue('blue.50', 'blue.900');
-  const activeColor = useColorModeValue('blue.600', 'blue.200');
-  const hoverBg = useColorModeValue('gray.100', 'gray.700');
-
-  return (
-    <Link to={to}>
-      <Flex
-        align="center"
-        p="4"
-        mx="4"
-        borderRadius="lg"
-        role="group"
-        cursor="pointer"
-        bg={isActive ? activeBg : 'transparent'}
-        color={isActive ? activeColor : undefined}
-        _hover={{
-          bg: isActive ? activeBg : hoverBg,
-        }}
-        transition=".2s ease"
-        onClick={(e) => {
-          if (window.innerWidth < 768) {
-            e.preventDefault();
-            const link = e.currentTarget as HTMLElement;
-            link.click();
-          }
-          if (onClick) {
-            onClick();
-          }
-        }}
-      >
-        <Icon
-          mr="4"
-          fontSize="16"
-          as={icon}
-          color={isActive ? activeColor : undefined}
-        />
-        <Text fontSize="sm" fontWeight={isActive ? 'medium' : 'normal'}>
-          {children}
-        </Text>
-      </Flex>
-    </Link>
-  );
-};
-
-const SidebarContent = ({ onClose }: { onClose: () => void }) => {
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
-  const menuBg = useColorModeValue('white', 'gray.800');
-
-  return (
-    <Box
-      w={{ base: 'full', md: '64' }}
-      pos="fixed"
-      h="full"
-      bg={menuBg}
-      borderRightWidth="1px"
-      borderColor={borderColor}
-    >
-      <Flex h="20" alignItems="center" mx="8" justifyContent="space-between">
-        <Text fontSize="2xl" fontWeight="bold">
-          Finance
-        </Text>
-      </Flex>
-      <VStack spacing="1" align="stretch" mt="6">
-        <NavItem icon={FiHome} to="/" onClick={onClose}>
-          Dashboard
-        </NavItem>
-        <NavItem icon={FiTrendingUp} to="/analytics" onClick={onClose}>
-          Analytics
-        </NavItem>
-        <NavItem icon={FiDollarSign} to="/transactions" onClick={onClose}>
-          Transactions
-        </NavItem>
-      </VStack>
-      <Box pos="absolute" bottom="0" w="full" p="4">
-        <VStack spacing="4" align="stretch">
-          <HStack justify="space-between" px="4">
-            <Menu>
-              <MenuButton>
-                <HStack spacing="3">
-                  <Avatar size="sm" name="Hayel Al-Faisali" />
-                  <Box>
-                    <Text fontSize="sm" fontWeight="medium">
-                      Hayel Al-Faisali
-                    </Text>
-                    <Text fontSize="xs" color="gray.500">
-                      Admin
-                    </Text>
-                  </Box>
-                </HStack>
-              </MenuButton>
-              <MenuList>
-                <MenuItem>Profile</MenuItem>
-                <MenuItem>Settings</MenuItem>
-                <MenuItem>Sign out</MenuItem>
-              </MenuList>
-            </Menu>
-          </HStack>
-          <Box px="4">
-            <ThemeToggle />
-          </Box>
-        </VStack>
-      </Box>
+  const itemList = <VStack align="stretch" spacing="6">{navItems.map(({ icon, label, to }) => {
+    const active = location.pathname === to || (to === '/analytics' && location.pathname === '/reports');
+    const link = <Flex as={Link} to={to} onClick={onClose} aria-label={label} title={compact ? label : undefined} justify={compact ? 'center' : 'start'} align="center" gap="3" w="full" h="11" px={compact ? 0 : 3} borderRadius="xl" position="relative" color={active ? '#55d6e9' : '#92a2ba'} bg={active ? 'rgba(8,180,210,.14)' : 'transparent'} transition="all .18s" _hover={{ bg: active ? 'rgba(8,180,210,.18)' : 'rgba(255,255,255,.055)', color: 'white' }}>
+      {active && <Box position="absolute" left="0" top="2" bottom="2" w="1" bg="brand.400" borderRadius="full" />}<Icon as={icon} boxSize="5"/><Text display={compact ? 'none' : 'block'} fontSize="sm" fontWeight={active ? '700' : '500'}>{label}</Text>
+    </Flex>;
+    return compact ? <Tooltip key={to} label={label} placement="right" hasArrow>{link}</Tooltip> : <Box key={to}>{link}</Box>;
+  })}</VStack>;
+  return <Flex direction="column" align="center" w={compact ? '76px' : '64'} h="full" bg="#0e1929" color="white" borderRight="1px solid #1d2b40" px={compact ? 2 : 4} py="5">
+    <Flex align="center" justify={compact ? 'center' : 'start'} w="full" mb="8" px={compact ? 0 : 2} gap="3" title="Finance+">
+      <Flex flex="none" w="10" h="10" align="center" justify="center" borderRadius="xl" bg="brand.500" color="#07121d" boxShadow="0 0 24px rgba(8,180,210,.22)"><Icon as={FiDollarSign} boxSize="5" strokeWidth="2.6" /></Flex>
+      {!compact && <Box><Text fontFamily="Manrope" fontSize="xl" fontWeight="800" letterSpacing="-.06em">Finance<Text as="span" color="#22c7e2">+</Text></Text><Text color="#8192a9" fontSize="10px" letterSpacing=".13em" fontWeight="700">FINANCIAL SUITE</Text></Box>}
+    </Flex>
+    {!compact && <Text alignSelf="start" px="3" mb="3" color="#71829a" fontSize="10px" fontWeight="700" letterSpacing=".16em">WORKSPACE</Text>}
+    {itemList}
+    <Box mt="auto" pt="4" w="full" borderTop="1px solid #1d2b40">
+      {compact ? <Tooltip label="Personal account" placement="right" hasArrow><Flex as="button" aria-label="Personal account" mx="auto" w="10" h="10" borderRadius="full" bg="#23364e" align="center" justify="center" color="#7ddbeb" fontWeight="700" fontSize="sm">U</Flex></Tooltip> : <HStack px="2"><Flex w="9" h="9" borderRadius="full" bg="#23364e" align="center" justify="center" color="#7ddbeb" fontWeight="700" fontSize="sm">U</Flex><Box><Text fontSize="sm" fontWeight="700">User</Text><Text color="#8192a9" fontSize="xs">Personal account</Text></Box></HStack>}
     </Box>
-  );
-};
+  </Flex>;
+}
 
-const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
-  return (
-    <Box>
-      <Box display={{ base: 'none', md: 'block' }}>
-        <SidebarContent onClose={onClose} />
-      </Box>
-      <Drawer
-        autoFocus={false}
-        isOpen={isOpen}
-        placement="left"
-        onClose={onClose}
-        returnFocusOnClose={false}
-        onOverlayClick={onClose}
-        size="full"
-      >
-        <DrawerOverlay />
-        <DrawerContent>
-          <DrawerCloseButton />
-          <DrawerHeader>Menu</DrawerHeader>
-          <DrawerBody p="0">
-            <SidebarContent onClose={onClose} />
-          </DrawerBody>
-        </DrawerContent>
-      </Drawer>
-    </Box>
-  );
-};
-
+const Sidebar = ({ isOpen, onClose }: SidebarProps) => <>
+  <Box display={{ base: 'none', md: 'block' }} position="fixed" insetY="0" left="0" zIndex="20"><SidebarPanel onClose={onClose} compact /></Box>
+  <Drawer isOpen={isOpen} placement="left" onClose={onClose} size="xs"><DrawerOverlay bg="blackAlpha.700"/><DrawerContent bg="#0e1929" maxW="64"><DrawerCloseButton color="white"/><DrawerHeader p="0"/><DrawerBody p="0"><SidebarPanel onClose={onClose} /></DrawerBody></DrawerContent></Drawer>
+</>;
 export default Sidebar;
