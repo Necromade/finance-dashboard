@@ -5,16 +5,13 @@ const ThemeToggle = () => {
   const { colorMode, toggleColorMode } = useColorMode();
 
   return (
-    <Tooltip label={`Ativar tema ${colorMode === 'light' ? 'escuro' : 'claro'}`}>
+    <Tooltip label={`Ativar tema ${colorMode === 'light' ? 'Emerald Dark' : 'claro'}`}>
       <IconButton
-        aria-label="Alternar tema claro e escuro"
+        aria-label={`Ativar tema ${colorMode === 'light' ? 'Emerald Dark' : 'claro'}`}
         icon={colorMode === 'light' ? <FiMoon /> : <FiSun />}
         onClick={toggleColorMode}
-        variant="ghost"
-        size="sm"
+        variant="icon"
         fontSize="xl"
-        color="brand.300"
-        _hover={{ color: 'brand.200', bg: 'whiteAlpha.100' }}
       />
     </Tooltip>
   );

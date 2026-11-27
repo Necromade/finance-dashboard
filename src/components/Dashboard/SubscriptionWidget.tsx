@@ -1,0 +1,12 @@
+﻿import { Alert, AlertIcon, Box, Heading, HStack, SimpleGrid, Text, VStack } from '@chakra-ui/react';
+import { currency, type RecurrenceFrequency, useFinanceData } from '../../data/financeStore';
+
+const localDate=(date:Date)=>`${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+const monthly=(amount:number,frequency:RecurrenceFrequency='monthly')=>amount*({daily:365/12,weekly:52/12,fortnightly:26/12,monthly:1,bimonthly:1/2,quarterly:1/3,semiannual:1/6,yearly:1/12}[frequency]);
+export default function SubscriptionWidget(){
+ const {recurring}=useFinanceData();const subscriptions=recurring.filter(item=>item.type==='expense');const monthlyTotal=subscriptions.reduce((sum,item)=>sum+monthly(item.amount,item.frequency),0);const annualTotal=monthlyTotal*12;
+ const today=localDate(new Date()),limitDate=new Date();limitDate.setDate(limitDate.getDate()+7);const limit=localDate(limitDate);const upcoming=subscriptions.filter(item=>item.nextDate>=today&&item.nextDate<=limit).sort((a,b)=>a.nextDate.localeCompare(b.nextDate));
+ return <Box bg="app.surface" border="1px solid" borderColor="app.border" borderRadius="2xl" p={{base:4,md:5}} minW={0}><Heading size="sm">Assinaturas recorrentes</Heading><Text color="app.muted" fontSize="xs" mt={1}>Custos e cobranças previstas</Text><SimpleGrid columns={2} spacing={3} mt={4}><Box p={3} bg="app.surfaceRaised" borderRadius="lg"><Text color="app.muted" fontSize="xs">Por mês</Text><Text fontWeight="700" color="brand.300">{currency(monthlyTotal)}</Text></Box><Box p={3} bg="app.surfaceRaised" borderRadius="lg"><Text color="app.muted" fontSize="xs">Por ano</Text><Text fontWeight="700">{currency(annualTotal)}</Text></Box></SimpleGrid>
+ {upcoming.length>0&&<Alert status="warning" borderRadius="lg" mt={3} py={2}><AlertIcon/><Text fontSize="xs">{upcoming.length} cobrança(s) nos próximos 7 dias.</Text></Alert>}
+ <VStack align="stretch" spacing={1} mt={3}>{subscriptions.length?subscriptions.slice(0,4).map(item=><HStack key={item.id} justify="space-between" py={2} borderBottom="1px solid" borderColor="app.border"><Box minW={0}><Text fontSize="sm" fontWeight="600" noOfLines={1}>{item.description}</Text><Text color="app.muted" fontSize="xs">Próxima: {new Date(`${item.nextDate}T00:00:00`).toLocaleDateString('pt-BR')}</Text></Box><Text fontSize="sm" fontWeight="700">{currency(item.amount)}</Text></HStack>):<Text fontSize="sm" color="app.muted">Cadastre serviços e cobranças em Planejamento para ver custos mensais, anuais e alertas.</Text>}</VStack></Box>;
+}

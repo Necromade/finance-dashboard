@@ -1,20 +1,23 @@
-import { useState } from 'react';
-import { Box, Text, Progress, VStack, HStack, Spacer, useColorModeValue, Heading, FormControl, FormLabel, Input, Button, SimpleGrid } from '@chakra-ui/react';
+﻿import { useMemo, useState } from 'react';
+import { Alert, AlertIcon, Box, Button, FormControl, FormLabel, Heading, HStack, Input, Progress, SimpleGrid, Spacer, Text, VStack } from '@chakra-ui/react';
 import { addBudget, currency, useFinanceData } from '../../data/financeStore';
+import { centsToMoney, sumCents } from '../../data/transactionDomain';
 
-const BudgetOverview = () => {
-  const { transactions, budgets } = useFinanceData();
-  const [category, setCategory] = useState('');
-  const [limit, setLimit] = useState('');
-  const [error, setError] = useState('');
-  const textColor = useColorModeValue('gray.600', 'gray.300');
-  const items = budgets.map((budget) => {
-    const spent = transactions.filter((t) => t.type === 'expense' && t.status === 'completed' && t.category === budget.category && t.date.startsWith(new Date().toISOString().slice(0, 7))).reduce((sum, t) => sum + t.amount, 0);
-    return { ...budget, spent, percentage: budget.limit > 0 ? Math.min(100, spent / budget.limit * 100) : 0 };
-  });
-  return <Box p={{ base: 3, md: 5 }} borderRadius="lg"><Heading size="md" mb={4}>Orçamento</Heading>
-    <Box as="form" onSubmit={(event: React.FormEvent<HTMLFormElement>) => { event.preventDefault(); try { addBudget(category, Number(limit)); setCategory(''); setLimit(''); setError(''); } catch (e) { setError(e instanceof Error ? e.message : 'Dados inválidos.'); } }} mb={4}><SimpleGrid columns={{ base: 1, md: 3 }} spacing={2} alignItems="end"><FormControl><FormLabel fontSize="sm">Categoria</FormLabel><Input aria-label="Categoria do orçamento" value={category} onChange={(e) => setCategory(e.target.value)} /></FormControl><FormControl><FormLabel fontSize="sm">Limite (USD)</FormLabel><Input aria-label="Limite do orçamento" type="number" min="0.01" step="0.01" value={limit} onChange={(e) => setLimit(e.target.value)} /></FormControl><Button type="submit">Salvar orçamento</Button></SimpleGrid>{error && <Text role="alert" color="red.500">{error}</Text>}</Box>
-    {items.length ? <VStack spacing={4} align="stretch">{items.map((item) => <Box key={item.category}><HStack mb={2}><Text fontSize="sm">{item.category}</Text><Spacer/><Text fontSize="sm">{currency(item.spent)} / {currency(item.limit)}</Text></HStack><Progress aria-label={`${item.category}: ${Math.round(item.percentage)}% do orçamento usado`} value={item.percentage} borderRadius="full" /></Box>)}</VStack> : <Text color={textColor}>Nenhum orçamento cadastrado.</Text>}
+const monthKey=(date:Date)=>`${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`;
+export default function BudgetOverview() {
+  const {transactions,budgets}=useFinanceData();
+  const [category,setCategory]=useState('');const [limit,setLimit]=useState('');const [error,setError]=useState('');const [saved,setSaved]=useState(false);
+  const key=monthKey(new Date());
+  const items=useMemo(()=>budgets.map(budget=>{const spent=centsToMoney(sumCents(transactions.filter(t=>t.type==='expense'&&t.status==='completed'&&t.category===budget.category&&t.date.startsWith(key))));const ratio=budget.limit?spent/budget.limit:0;return {...budget,spent,ratio,percentage:Math.min(100,ratio*100)};}),[budgets,transactions,key]);
+  const totalLimit=items.reduce((sum,item)=>sum+item.limit,0),totalSpent=items.reduce((sum,item)=>sum+item.spent,0),overall=totalLimit?Math.min(100,totalSpent/totalLimit*100):0;
+  const alertItems=items.filter(item=>item.ratio>=.8).sort((a,b)=>b.ratio-a.ratio);
+  return <Box p={{base:3,md:5}} borderRadius="lg"><HStack justify="space-between" align="start" mb={4}><Box><Heading size="md">Orçamento do mês</Heading><Text color="app.muted" fontSize="sm" mt={1}>{new Date().toLocaleDateString('pt-BR',{month:'long',year:'numeric'})}</Text></Box></HStack>
+    {totalLimit>0&&<Box bg="app.surfaceRaised" borderRadius="xl" p={4} mb={4}><HStack><Text fontWeight="600">Total planejado nas categorias</Text><Spacer/><Text fontWeight="700">{currency(totalSpent)} / {currency(totalLimit)}</Text></HStack><Progress mt={3} value={overall} colorScheme={overall>=100?'red':overall>=80?'orange':'green'} borderRadius="full"/><Text color="app.muted" fontSize="xs" mt={2}>{Math.max(0,totalLimit-totalSpent)>0?`${currency(totalLimit-totalSpent)} disponíveis`: `${currency(totalSpent-totalLimit)} acima do limite total`}</Text></Box>}
+    {alertItems.map(item=><Alert key={item.category} status={item.ratio>=1?'error':'warning'} borderRadius="lg" mb={2} variant="left-accent"><AlertIcon/><Text fontSize="sm">{item.ratio>=1?`${item.category}: limite mensal excedido em ${currency(item.spent-item.limit)}.`:`${item.category}: você já usou ${Math.round(item.ratio*100)}% do limite mensal.`}</Text></Alert>)}
+    <Box as="form" onSubmit={(event:React.FormEvent<HTMLFormElement>)=>{event.preventDefault();try{addBudget(category,Number(limit));setCategory('');setLimit('');setError('');setSaved(true);window.setTimeout(()=>setSaved(false),2500);}catch(e){setError(e instanceof Error?e.message:'Confira os dados do orçamento.');}}} mb={5}>
+      <SimpleGrid columns={{base:1,md:3,xl:1,'2xl':3}} spacing={{base:3,'2xl':2}} alignItems="end"><FormControl isRequired minW={0}><FormLabel fontSize="sm" noOfLines={1}>Categoria</FormLabel><Input aria-label="Categoria do orçamento" value={category} onChange={e=>setCategory(e.target.value)} placeholder="Ex.: alimentação"/></FormControl><FormControl isRequired minW={0}><FormLabel fontSize="sm" noOfLines={1}>Limite mensal (R$)</FormLabel><Input aria-label="Limite mensal do orçamento" type="number" min="0.01" step="0.01" value={limit} onChange={e=>setLimit(e.target.value)} placeholder="0,00"/></FormControl><Button type="submit" w="full">Salvar limite</Button></SimpleGrid>
+      {error&&<Text role="alert" color="red.300" mt={2}>{error}</Text>}{saved&&<Text role="status" color="brand.300" mt={2}>Orçamento salvo.</Text>}
+    </Box>
+    {items.length?<VStack spacing={4} align="stretch">{items.map(item=><Box key={item.category} p={3} border="1px solid" borderColor={item.ratio>=1?'red.700':item.ratio>=.8?'orange.700':'app.border'} borderRadius="xl"><HStack mb={2}><Text fontSize="sm" fontWeight="600">{item.category}</Text><Spacer/><Text fontSize="sm" fontWeight="600">{currency(item.spent)} / {currency(item.limit)}</Text></HStack><Progress aria-label={`${item.category}: ${Math.round(item.percentage)}% do limite utilizado`} value={item.percentage} colorScheme={item.ratio>=1?'red':item.ratio>=.8?'orange':'green'} borderRadius="full"/><Text fontSize="xs" color={item.ratio>=.8?'orange.300':'app.muted'} mt={2}>{item.ratio>=1?'Limite ultrapassado':item.ratio>=.8?'Próximo do limite':`${currency(item.limit-item.spent)} restantes`}</Text></Box>)}</VStack>:<Text color="app.muted">Defina limites mensais por categoria para acompanhar gastos e receber alertas em 80% e 100% do orçamento.</Text>}
   </Box>;
-};
-export default BudgetOverview;
+}

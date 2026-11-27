@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "test": "node --experimental-strip-types --test-isolation=none --test",
     "lint": "eslint .",
     "preview": "vite preview"
   },
