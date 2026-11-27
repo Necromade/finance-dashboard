@@ -12,20 +12,21 @@ import CalendarPage from './pages/Calendar';
 import FinancialReport from './pages/FinancialReport';
 import ThemeToggle from './theme/ThemeToggle';
 import { useFinanceData } from './data/financeStore';
+import { readLocal, writeLocal } from './storage.ts';
 
 export const PRIVACY_EVENT = 'finance-privacy-toggle';
 function AppFrame() {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [sidebarExpanded, setSidebarExpanded] = useState(() => {
-    try { return localStorage.getItem('finance-sidebar-expanded') !== 'false'; } catch { return true; }
+    return readLocal('finance-sidebar-expanded') !== 'false';
   });
   const location = useLocation();
   const data = useFinanceData();
   const hasData = data.transactions.length + data.accounts.length + data.goals.length + data.budgets.length + data.recurring.length > 0;
-  const [showOnboarding, setShowOnboarding] = useState(() => localStorage.getItem('finance-onboarding-complete') !== 'true' && !hasData);
+  const [showOnboarding, setShowOnboarding] = useState(() => readLocal('finance-onboarding-complete') !== 'true' && !hasData);
   const [online, setOnline] = useState(() => navigator.onLine);
   const [period, setPeriod] = useState('6');
-  const [privacy, setPrivacy] = useState(() => localStorage.getItem('finance-privacy') === 'true');
+  const [privacy, setPrivacy] = useState(() => readLocal('finance-privacy') === 'true');
   const pageTitle = location.pathname === '/transactions' ? 'Transações' : location.pathname === '/planning' ? 'Planejamento' : location.pathname === '/accounts' ? 'Contas e cartões' : location.pathname === '/calendar' ? 'Calendário financeiro' : location.pathname === '/report/pdf' ? 'Relatório financeiro' : location.pathname === '/' ? 'Visão geral' : 'Análises';
   const headerBg = useColorModeValue('rgba(255,255,255,.9)', 'rgba(12,18,16,.92)');
   useEffect(() => {
@@ -33,10 +34,10 @@ function AppFrame() {
     window.addEventListener('online', update); window.addEventListener('offline', update);
     return () => { window.removeEventListener('online', update); window.removeEventListener('offline', update); };
   }, []);
-  const finishOnboarding = () => { localStorage.setItem('finance-onboarding-complete', 'true'); setShowOnboarding(false); };
+  const finishOnboarding = () => { writeLocal('finance-onboarding-complete', 'true'); setShowOnboarding(false); };
   const toggleSidebar = () => setSidebarExpanded(value => {
     const next = !value;
-    try { localStorage.setItem('finance-sidebar-expanded', String(next)); } catch { /* Mantém a preferência durante a sessão atual. */ }
+    writeLocal('finance-sidebar-expanded', String(next));
     return next;
   });
   const showPeriod = ['/', '/analytics', '/reports'].includes(location.pathname);
@@ -51,7 +52,7 @@ function AppFrame() {
         <HStack spacing={{ base: 1, md: 2 }} flex="none">
           {!online&&<Tooltip label="Dados salvos neste dispositivo; conexão indisponível"><Alert display={{base:'none',sm:'flex'}} status="warning" p={{sm:1,md:2}} borderRadius="lg" aria-label="Modo offline"><AlertIcon boxSize={3} mr={1}/><Text fontSize="xs">Offline</Text></Alert></Tooltip>}
           {showPeriod&&<Select value={period} onChange={event=>setPeriod(event.target.value)} size="sm" w={{base:'144px',sm:'150px',md:'156px'}} aria-label={location.pathname==='/'?'Período do gráfico do dashboard':'Período das análises'}><option value="thisMonth">Este mês</option><option value="lastMonth">Mês anterior</option><option value="3">3 meses</option><option value="6">6 meses</option><option value="12">1 ano</option></Select>}
-          <Tooltip label={privacy?'Mostrar valores':'Ocultar valores'}><IconButton variant="icon" aria-label={privacy?'Mostrar valores':'Ocultar valores'} icon={privacy?<FiEye/>:<FiEyeOff/>} onClick={()=>{const next=!privacy;setPrivacy(next);localStorage.setItem('finance-privacy',String(next));window.dispatchEvent(new CustomEvent(PRIVACY_EVENT,{detail:next}));}}/></Tooltip><ThemeToggle/>
+          <Tooltip label={privacy?'Mostrar valores':'Ocultar valores'}><IconButton variant="icon" aria-label={privacy?'Mostrar valores':'Ocultar valores'} icon={privacy?<FiEye/>:<FiEyeOff/>} onClick={()=>{const next=!privacy;setPrivacy(next);writeLocal('finance-privacy',String(next));window.dispatchEvent(new CustomEvent(PRIVACY_EVENT,{detail:next}));}}/></Tooltip><ThemeToggle/>
           <Tooltip label="Perfil · Conta pessoal"><HStack spacing={2} pl={{base:0,sm:1,md:2}}><Avatar display={{base:'none',sm:'flex'}} size="sm" name="Usuário" bg="brand.500" color="#07121d"/><Box display={{base:'none',lg:'block'}}><Text fontSize="sm" fontWeight="700">Usuário</Text><Text fontSize="xs" color="app.muted">Conta pessoal</Text></Box></HStack></Tooltip>
         </HStack>
       </Flex>

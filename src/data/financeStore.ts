@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import { readLocal, writeLocal } from '../storage.ts';
 import {
   centsToMoney, completedTotals, generateRecurrenceDates, moneyToCents,
   splitCents, transactionCents, type RecurrenceFrequency,
@@ -134,11 +135,11 @@ export function normalizeFinanceData(value: unknown): FinanceData {
 
 function localDateKey(date: Date) { return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`; }
 function load(): FinanceData {
+  const raw = readLocal(STORAGE_KEY);
+  if (!raw) return emptyData();
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return emptyData();
     const normalized = normalizeFinanceData(JSON.parse(raw));
-    if (JSON.stringify(normalized) !== raw) localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
+    if (JSON.stringify(normalized) !== raw) writeLocal(STORAGE_KEY, JSON.stringify(normalized));
     return normalized;
   } catch { return emptyData(); }
 }
@@ -146,7 +147,7 @@ let state = load();
 const listeners = new Set<() => void>();
 function publish(next: FinanceData) {
   state = normalizeFinanceData(next);
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch { /* Storage can be unavailable in private browsing. */ }
+  writeLocal(STORAGE_KEY, JSON.stringify(state));
   listeners.forEach((listener) => listener());
 }
 export function useFinanceData() {
@@ -316,7 +317,7 @@ export function restoreBackup(raw: string) {
 export function getTotals(transactions = state.transactions) { const totals = completedTotals(transactions); return { income: totals.income, expense: totals.expense }; }
 export function getMonthKey(date: string) { return date.slice(0, 7); }
 export function currency(value: number) {
-  if (typeof localStorage !== 'undefined' && localStorage.getItem('finance-privacy') === 'true') return '••••••';
+  if (readLocal('finance-privacy') === 'true') return '••••••';
   const cents = moneyToCents(Number.isFinite(value) ? value : 0);
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(centsToMoney(cents));
 }
