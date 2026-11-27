@@ -1,5 +1,8 @@
-﻿const CACHE = 'finance-plus-shell-v2';
-const SHELL = ['/', '/manifest.webmanifest', '/finance-icon.svg'];
+const CACHE = 'finance-plus-shell-v3';
+const BASE = new URL('./', self.registration.scope);
+const SHELL = ['index.html', 'manifest.webmanifest', 'finance-icon.svg'].map(path => new URL(path, BASE).href);
+const HOME = new URL('index.html', BASE).href;
+
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting()));
 });
@@ -13,7 +16,7 @@ self.addEventListener('fetch', event => {
     event.respondWith(fetch(request).then(response => {
       if (response.ok) { const copy = response.clone(); void caches.open(CACHE).then(cache => cache.put(request, copy)); }
       return response;
-    }).catch(async () => (await caches.match(request)) || (await caches.match('/'))));
+    }).catch(async () => (await caches.match(request)) || (await caches.match(HOME))));
     return;
   }
   event.respondWith(caches.match(request).then(cached => {
